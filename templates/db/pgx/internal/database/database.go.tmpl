@@ -7,6 +7,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// DefaultURL matches compose.yaml; override with DATABASE_URL.
+const DefaultURL = "postgres://postgres:postgres@localhost:5432/{{.Name}}?sslmode=disable"
+
 // Open connects and pings, so a bad DATABASE_URL fails at startup.
 func Open(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(ctx, url)

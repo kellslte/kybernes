@@ -1,8 +1,12 @@
 package config
 
-import "os"
-
 {{if .DB -}}
+import (
+	"os"
+
+	"{{.Module}}/internal/database"
+)
+
 type Config struct {
 	Addr        string
 	DatabaseURL string
@@ -11,10 +15,12 @@ type Config struct {
 func Load() Config {
 	return Config{
 		Addr:        env("ADDR", ":8080"),
-		DatabaseURL: env("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/{{.Name}}?sslmode=disable"),
+		DatabaseURL: env("DATABASE_URL", database.DefaultURL),
 	}
 }
 {{- else -}}
+import "os"
+
 type Config struct{ Addr string }
 
 func Load() Config { return Config{Addr: env("ADDR", ":8080")} }

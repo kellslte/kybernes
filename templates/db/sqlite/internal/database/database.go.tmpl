@@ -1,0 +1,25 @@
+// Package database opens a SQLite database (database/sql, pure-Go modernc driver, no CGO).
+package database
+
+import (
+	"context"
+	"database/sql"
+
+	_ "modernc.org/sqlite"
+)
+
+// DefaultURL is a file next to where you run the server; override with DATABASE_URL.
+const DefaultURL = "file:{{.Name}}.db?_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)"
+
+// Open connects and pings, so a bad DATABASE_URL fails at startup.
+func Open(ctx context.Context, dsn string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
+}

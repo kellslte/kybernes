@@ -1,0 +1,25 @@
+// Package database opens the MySQL connection pool (database/sql).
+package database
+
+import (
+	"context"
+	"database/sql"
+
+	_ "github.com/go-sql-driver/mysql"
+)
+
+// DefaultURL matches compose.yaml; override with DATABASE_URL. parseTime=true is required by goose.
+const DefaultURL = "root:mysql@tcp(localhost:3306)/{{.Name}}?parseTime=true"
+
+// Open connects and pings, so a bad DATABASE_URL fails at startup.
+func Open(ctx context.Context, dsn string) (*sql.DB, error) {
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, err
+	}
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
+}

@@ -1,0 +1,32 @@
+// Package database opens the MongoDB client (official driver v2).
+package database
+
+import (
+	"context"
+	"time"
+
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+)
+
+// DefaultURL matches compose.yaml; override with DATABASE_URL.
+const DefaultURL = "mongodb://localhost:27017/{{.Name}}"
+
+// DB is the client plus a no-argument Close, so main.go treats every database layer alike.
+// Use d.Database("{{.Name}}") to get a handle.
+type DB struct{ *mongo.Client }
+
+// Open connects and pings, so a bad DATABASE_URL fails at startup.
+func Open(ctx context.Context, uri string) (*DB, error) {
+	c, err := mongo.Connect(options.Client().ApplyURI(uri).SetServerSelectionTimeout(5 * time.Second))
+	if err != nil {
+		return nil, err
+	}
+	if err := c.Ping(ctx, nil); err != nil {
+		_ = c.Disconnect(context.Background())
+		return nil, err
+	}
+	return &DB{c}, nil
+}
+
+func (d *DB) Close() { _ = d.Client.Disconnect(context.Background()) }

@@ -1,0 +1,43 @@
+// Command migrate runs the embedded SQL migrations with goose.
+//
+//	go run ./cmd/migrate up|down|status|version|redo|reset
+//
+// The database comes from DATABASE_URL (see internal/config).
+package main
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"os"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
+
+	"{{.Module}}/internal/config"
+	"{{.Module}}/migrations"
+)
+
+func main() {
+	if len(os.Args) < 2 {
+		fmt.Fprintln(os.Stderr, "usage: migrate <up|down|status|version|redo|reset> [args]")
+		os.Exit(2)
+	}
+	if err := run(os.Args[1], os.Args[2:]); err != nil {
+		fmt.Fprintln(os.Stderr, "migrate:", err)
+		os.Exit(1)
+	}
+}
+
+func run(command string, args []string) error {
+	db, err := sql.Open("pgx", config.Load().DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	goose.SetBaseFS(migrations.FS)
+	if err := goose.SetDialect("postgres"); err != nil {
+		return err
+	}
+	return goose.RunContext(context.Background(), command, db, ".", args...)
+}

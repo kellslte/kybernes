@@ -126,7 +126,7 @@ func TestFullStackBuilds(t *testing.T) {
 				t.Fatal(err)
 			}
 			p := dir + "/demo"
-			for _, f := range []string{".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "compose.yaml", "internal/telemetry/telemetry.go", "internal/database/database.go"} {
+			for _, f := range []string{".github/workflows/ci.yml", "Dockerfile", ".dockerignore", "compose.yaml", "internal/telemetry/telemetry.go", "internal/database/database.go", "cmd/migrate/main.go", "migrations/embed.go", "migrations/00001_init.sql"} {
 				if _, err := os.Stat(p + "/" + f); err != nil {
 					t.Error(err)
 				}
