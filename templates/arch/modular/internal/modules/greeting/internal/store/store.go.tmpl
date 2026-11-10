@@ -1,0 +1,7 @@
+package store
+
+type Store struct{}
+
+func New() *Store { return &Store{} }
+
+func (*Store) Prefix() string { return "Hello" }

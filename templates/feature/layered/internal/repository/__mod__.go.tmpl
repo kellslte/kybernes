@@ -1,0 +1,7 @@
+package repository
+
+type {{.Title}} struct{}
+
+func New{{.Title}}() *{{.Title}} { return &{{.Title}}{} }
+
+func (*{{.Title}}) Name() string { return "{{.Mod}}" }

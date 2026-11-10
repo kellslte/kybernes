@@ -1,0 +1,14 @@
+// Package domain is the core: pure types and rules. Imports nothing from this module.
+package domain
+
+import "fmt"
+
+type Greeting struct{ Prefix, Name string }
+
+func (g Greeting) Message() string {
+	name := g.Name
+	if name == "" {
+		name = "world"
+	}
+	return fmt.Sprintf("%s, %s!", g.Prefix, name)
+}

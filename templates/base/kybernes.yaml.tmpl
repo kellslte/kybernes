@@ -1,0 +1,14 @@
+version: 1
+name: {{.Name}}
+kybernes: {{.Version}}
+module: {{.Module}}
+architecture: {{.Arch}}
+router: {{.Router}}
+{{- if .DB}}
+database: {{.DB}}
+{{- end}}
+{{- if .Extras}}
+extras: {{.Extras}}
+{{- end}}
+features:
+  - greeting

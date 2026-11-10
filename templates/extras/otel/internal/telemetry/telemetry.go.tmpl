@@ -1,0 +1,29 @@
+// Package telemetry wires OpenTelemetry tracing. Configure it with the standard
+// OTEL_* environment variables (OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_SERVICE_NAME, ...).
+package telemetry
+
+import (
+	"context"
+	"net/http"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/propagation"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+)
+
+// Setup installs a global tracer provider and returns its shutdown function.
+func Setup(ctx context.Context) (func(context.Context) error, error) {
+	exp, err := otlptracehttp.New(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tp := sdktrace.NewTracerProvider(sdktrace.WithBatcher(exp))
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+	return tp.Shutdown, nil
+}
+
+// Wrap traces every request handled by h.
+func Wrap(h http.Handler, name string) http.Handler { return otelhttp.NewHandler(h, name) }

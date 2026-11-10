@@ -1,0 +1,20 @@
+// Package greeting is a module. Its public API is this package; implementation
+// lives under internal/ so other modules cannot reach it (enforced by the compiler).
+package greeting
+
+import (
+	"fmt"
+
+	"{{.Module}}/internal/modules/greeting/internal/store"
+)
+
+type Service struct{ store *store.Store }
+
+func New() *Service { return &Service{store: store.New()} }
+
+func (s *Service) Greet(name string) string {
+	if name == "" {
+		name = "world"
+	}
+	return fmt.Sprintf("%s, %s!", s.store.Prefix(), name)
+}

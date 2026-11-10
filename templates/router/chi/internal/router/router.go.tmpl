@@ -1,0 +1,18 @@
+package router
+
+import (
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+
+	"{{.Module}}/internal/handler"
+)
+
+func New(h *handler.Handler) http.Handler {
+	r := chi.NewRouter()
+	r.Use(middleware.Recoverer)
+	r.Get("/healthz", h.Health)
+	r.Get("/hello", h.Hello)
+	return r
+}

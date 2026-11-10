@@ -1,0 +1,15 @@
+// Package app holds use cases and the ports they need. May import domain only.
+package app
+
+import "{{.Module}}/internal/domain"
+
+// PrefixSource is a driven port, implemented by an adapter (see internal/store).
+type PrefixSource interface{ Prefix() string }
+
+type App struct{ prefixes PrefixSource }
+
+func New(p PrefixSource) *App { return &App{prefixes: p} }
+
+func (a *App) Greet(name string) string {
+	return domain.Greeting{Prefix: a.prefixes.Prefix(), Name: name}.Message()
+}

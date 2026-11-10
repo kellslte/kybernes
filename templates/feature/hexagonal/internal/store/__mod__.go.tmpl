@@ -1,0 +1,7 @@
+package store
+
+type {{.Title}}Memory struct{}
+
+func New{{.Title}}Memory() *{{.Title}}Memory { return &{{.Title}}Memory{} }
+
+func (*{{.Title}}Memory) Name() string { return "{{.Mod}}" }

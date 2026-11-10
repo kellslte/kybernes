@@ -1,0 +1,22 @@
+// Package handler is the HTTP layer; it composes modules through their public APIs.
+// Router layers rely on this package exposing *Handler with Health and Hello.
+package handler
+
+import (
+	"fmt"
+	"net/http"
+
+	"{{.Module}}/internal/modules/greeting"
+)
+
+type Handler struct{ greeting *greeting.Service }
+
+func New(g *greeting.Service) *Handler { return &Handler{greeting: g} }
+
+func (h *Handler) Health(w http.ResponseWriter, _ *http.Request) {
+	_, _ = w.Write([]byte("ok"))
+}
+
+func (h *Handler) Hello(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, h.greeting.Greet(r.URL.Query().Get("name")))
+}

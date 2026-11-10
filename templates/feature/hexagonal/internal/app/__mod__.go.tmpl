@@ -1,0 +1,12 @@
+package app
+
+import "{{.Module}}/internal/domain"
+
+// {{.Title}}Source is a driven port, implemented by an adapter (see internal/store).
+type {{.Title}}Source interface{ Name() string }
+
+type {{.Title}}Service struct{ src {{.Title}}Source }
+
+func New{{.Title}}Service(s {{.Title}}Source) *{{.Title}}Service { return &{{.Title}}Service{src: s} }
+
+func (s *{{.Title}}Service) Get() domain.{{.Title}} { return domain.{{.Title}}{Name: s.src.Name()} }

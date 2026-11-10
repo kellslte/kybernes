@@ -1,0 +1,14 @@
+package router
+
+import (
+	"net/http"
+
+	"{{.Module}}/internal/handler"
+)
+
+func New(h *handler.Handler) http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", h.Health)
+	mux.HandleFunc("GET /hello", h.Hello)
+	return mux
+}

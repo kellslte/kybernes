@@ -1,0 +1,8 @@
+// Package store is a driven adapter implementing app ports. Imports nothing from this module.
+package store
+
+type Memory struct{}
+
+func New() *Memory { return &Memory{} }
+
+func (*Memory) Prefix() string { return "Hello" }

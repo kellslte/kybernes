@@ -1,0 +1,16 @@
+package handler
+
+import (
+	"fmt"
+	"net/http"
+
+	"{{.Module}}/internal/app"
+)
+
+type {{.Title}}Handler struct{ svc *app.{{.Title}}Service }
+
+func New{{.Title}}Handler(s *app.{{.Title}}Service) *{{.Title}}Handler { return &{{.Title}}Handler{svc: s} }
+
+func (h *{{.Title}}Handler) Get(w http.ResponseWriter, _ *http.Request) {
+	fmt.Fprintln(w, h.svc.Get().Name)
+}

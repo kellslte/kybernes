@@ -1,0 +1,22 @@
+// Package handler is the driving HTTP adapter. May import app only.
+// Router layers rely on this package exposing *Handler with Health and Hello.
+package handler
+
+import (
+	"fmt"
+	"net/http"
+
+	"{{.Module}}/internal/app"
+)
+
+type Handler struct{ app *app.App }
+
+func New(a *app.App) *Handler { return &Handler{app: a} }
+
+func (h *Handler) Health(w http.ResponseWriter, _ *http.Request) {
+	_, _ = w.Write([]byte("ok"))
+}
+
+func (h *Handler) Hello(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, h.app.Greet(r.URL.Query().Get("name")))
+}

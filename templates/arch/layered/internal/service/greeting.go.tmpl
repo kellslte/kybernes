@@ -1,0 +1,19 @@
+// Package service holds business logic. May import repository only.
+package service
+
+import (
+	"fmt"
+
+	"{{.Module}}/internal/repository"
+)
+
+type Greeting struct{ repo *repository.Greeting }
+
+func New(r *repository.Greeting) *Greeting { return &Greeting{repo: r} }
+
+func (s *Greeting) Greet(name string) string {
+	if name == "" {
+		name = "world"
+	}
+	return fmt.Sprintf("%s, %s!", s.repo.Prefix(), name)
+}

@@ -1,0 +1,8 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: {{.Name}}
+    ports:
+      - "5432:5432"

@@ -1,0 +1,86 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+{{if eq .Arch "hexagonal"}}	"{{.Module}}/internal/app"
+{{end}}	"{{.Module}}/internal/config"
+{{- if .DB}}
+	"{{.Module}}/internal/database"
+{{- end}}
+	"{{.Module}}/internal/handler"
+{{- if eq .Arch "modular"}}
+	"{{.Module}}/internal/modules/greeting"
+{{- end}}
+{{- if eq .Arch "layered"}}
+	"{{.Module}}/internal/repository"
+{{- end}}
+	"{{.Module}}/internal/router"
+{{- if eq .Arch "layered"}}
+	"{{.Module}}/internal/service"
+{{- end}}
+{{- if eq .Arch "hexagonal"}}
+	"{{.Module}}/internal/store"
+{{- end}}
+{{- if .Otel}}
+	"{{.Module}}/internal/telemetry"
+{{- end}}
+)
+
+func main() {
+	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	cfg := config.Load()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+{{- if .Otel}}
+
+	shutdownTelemetry, err := telemetry.Setup(ctx)
+	if err != nil {
+		log.Error("telemetry", "err", err)
+		os.Exit(1)
+	}
+	defer func() { _ = shutdownTelemetry(context.Background()) }()
+{{- end}}
+{{- if .DB}}
+
+	pool, err := database.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Error("database", "err", err)
+		os.Exit(1)
+	}
+	defer pool.Close() // hand pool to your repositories / store adapters
+{{- end}}
+
+{{- if eq .Arch "layered"}}
+	h := handler.New(service.New(repository.New()))
+{{- else if eq .Arch "hexagonal"}}
+	h := handler.New(app.New(store.New()))
+{{- else}}
+	h := handler.New(greeting.New())
+{{- end}}
+	root := router.New(h)
+{{- if .Otel}}
+	root = telemetry.Wrap(root, "{{.Name}}")
+{{- end}}
+	srv := &http.Server{Addr: cfg.Addr, Handler: root, ReadHeaderTimeout: 5 * time.Second}
+
+	go func() {
+		<-ctx.Done()
+		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = srv.Shutdown(shutdown)
+	}()
+
+	log.Info("listening", "addr", cfg.Addr)
+	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		log.Error("server", "err", err)
+		os.Exit(1)
+	}
+}

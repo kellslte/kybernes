@@ -1,0 +1,8 @@
+// Package repository is the data-access layer. Imports nothing from this module.
+package repository
+
+type Greeting struct{}
+
+func New() *Greeting { return &Greeting{} }
+
+func (*Greeting) Prefix() string { return "Hello" }
