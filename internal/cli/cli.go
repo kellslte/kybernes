@@ -14,10 +14,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/kybernes/kybernes/internal/check"
-	"github.com/kybernes/kybernes/internal/lock"
-	"github.com/kybernes/kybernes/internal/render"
-	"github.com/kybernes/kybernes/templates"
+	"github.com/kellslte/kybernes/internal/check"
+	"github.com/kellslte/kybernes/internal/lock"
+	"github.com/kellslte/kybernes/internal/render"
+	"github.com/kellslte/kybernes/templates"
 )
 
 const version = "v0.1.0"

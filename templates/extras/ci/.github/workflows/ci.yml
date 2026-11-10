@@ -15,5 +15,5 @@ jobs:
       - run: go test -race ./...
       - name: Architecture check
         run: |
-          go install github.com/kybernes/kybernes/cmd/kybernes@latest
+          go install github.com/kellslte/kybernes/cmd/kybernes@latest
           kybernes check

@@ -8,10 +8,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/kybernes/kybernes/internal/lock"
-	"github.com/kybernes/kybernes/internal/manifest"
-	"github.com/kybernes/kybernes/internal/render"
-	"github.com/kybernes/kybernes/templates"
+	"github.com/kellslte/kybernes/internal/lock"
+	"github.com/kellslte/kybernes/internal/manifest"
+	"github.com/kellslte/kybernes/internal/render"
+	"github.com/kellslte/kybernes/templates"
 )
 
 var featRe = regexp.MustCompile(`^[a-z][a-z0-9]*$`) // doubles as a Go package name in modular

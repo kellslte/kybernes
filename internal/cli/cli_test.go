@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kybernes/kybernes/internal/check"
-	"github.com/kybernes/kybernes/templates"
+	"github.com/kellslte/kybernes/internal/check"
+	"github.com/kellslte/kybernes/templates"
 )
 
 func goRun(t *testing.T, dir string, args ...string) {

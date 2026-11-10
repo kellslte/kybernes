@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kybernes/kybernes/internal/manifest"
+	"github.com/kellslte/kybernes/internal/manifest"
 )
 
 // rules[arch][layer] = layers that layer may import (itself is always allowed).

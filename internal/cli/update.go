@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kybernes/kybernes/internal/lock"
-	"github.com/kybernes/kybernes/internal/manifest"
+	"github.com/kellslte/kybernes/internal/lock"
+	"github.com/kellslte/kybernes/internal/manifest"
 )
 
 // Update re-renders the project with this binary's templates and merges the result

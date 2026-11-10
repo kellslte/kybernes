@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kybernes/kybernes/internal/lock"
+	"github.com/kellslte/kybernes/internal/lock"
 )
 
 func TestUpdate(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kybernes/kybernes/internal/cli"
+	"github.com/kellslte/kybernes/internal/cli"
 )
 
 func main() {
