@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -9,10 +10,13 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/kellslte/kybernes/internal/check"
 	"github.com/kellslte/kybernes/internal/lock"
@@ -23,80 +27,74 @@ import (
 const version = "v0.1.0"
 
 const usage = `usage:
-  kybernes new <name> [--module path] [--arch layered|hexagonal|modular] [--router stdlib|chi] [--db pgx] [--extras ci,docker,otel] [--dir .]
+  kybernes new [name] [--module path] [--arch layered|hexagonal|modular] [--router stdlib|chi] [--db pgx] [--extras ci,docker,otel] [--dir .]
   kybernes add feature <name> [--dir .]
-  kybernes update [--dry-run] [--dir .]   (merge newer templates; local edits are never overwritten)
-  kybernes check [--dir .]   (verify import rules for the project's architecture)
-  kybernes add module <name> [--dir .]   (alias of add feature; modular architecture only)`
+  kybernes add module <name> [--dir .]            (alias of add feature; modular only)
+  kybernes add handler <name> [--dir .]           (HTTP handler in internal/handler)
+  kybernes add service <name> [--module m] [--dir .]   (service in the architecture's business layer; --module required for modular)
+  kybernes add migration <name> [--dir .]         (goose SQL file in migrations/; needs --db)
+  kybernes migrate [--dir .] <up|down|status|...> (run goose migrations via DATABASE_URL; needs --db)
+  kybernes dev [--dir .]                          (build, run and live-reload cmd/server on file changes)
+  kybernes update [--dry-run] [--dir .]           (merge newer templates; local edits are never overwritten)
+  kybernes check [--dir .]                        (verify import rules for the project's architecture)
+  kybernes doctor [--dir .]                       (diagnose toolchain and project health)`
 
 func Run(args []string, in io.Reader, out io.Writer) error {
-	if len(args) >= 3 && args[0] == "add" && (args[1] == "feature" || args[1] == "module") {
-		dir := "."
-		if len(args) == 5 && args[3] == "--dir" {
-			dir = args[4]
-		} else if len(args) != 3 {
-			return errors.New(usage)
-		}
-		add := AddFeature
-		if args[1] == "module" {
-			add = AddModule
-		}
-		if err := add(dir, args[2]); err != nil {
-			return err
-		}
-		fmt.Fprintf(out, "added %s %s: wire it up in cmd/server/main.go and internal/handler\n", args[1], args[2])
-		return nil
-	}
-	if len(args) >= 1 && args[0] == "update" {
-		dir, dry := ".", false
-		for i := 1; i < len(args); i++ {
-			switch {
-			case args[i] == "--dry-run":
-				dry = true
-			case args[i] == "--dir" && i+1 < len(args):
-				i++
-				dir = args[i]
-			default:
-				return errors.New(usage)
-			}
-		}
-		report, err := Update(dir, dry)
-		if err != nil {
-			return err
-		}
-		for _, l := range report {
-			fmt.Fprintln(out, l)
-		}
-		if len(report) == 0 {
-			fmt.Fprintln(out, "already up to date")
-		}
-		return nil
-	}
-	if len(args) >= 1 && args[0] == "check" {
-		dir := "."
-		if len(args) == 3 && args[1] == "--dir" {
-			dir = args[2]
-		} else if len(args) != 1 {
-			return errors.New(usage)
-		}
-		bad, err := check.Run(dir)
-		if err != nil {
-			return err
-		}
-		for _, v := range bad {
-			fmt.Fprintln(out, v)
-		}
-		if len(bad) > 0 {
-			return fmt.Errorf("%d architecture violation(s)", len(bad))
-		}
-		fmt.Fprintln(out, "ok: no architecture violations")
-		return nil
-	}
-	if len(args) == 0 || args[0] != "new" {
+	if len(args) == 0 {
 		return errors.New(usage)
 	}
-	fs := flag.NewFlagSet("new", flag.ContinueOnError)
+	switch args[0] {
+	case "new":
+		return runNew(args[1:], in, out)
+	case "add":
+		return runAdd(args[1:], out)
+	case "update":
+		return runUpdate(args[1:], out)
+	case "check":
+		return runCheck(args[1:], out)
+	case "doctor":
+		return runDoctor(args[1:], out)
+	case "dev":
+		fs := flag.NewFlagSet("dev", flag.ContinueOnError)
+		dir := fs.String("dir", ".", "project directory")
+		if _, err := parseFlags(fs, args[1:]); err != nil {
+			return err
+		}
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		return Dev(ctx, *dir, out)
+	case "migrate":
+		args = args[1:]
+		dir := "."
+		if len(args) >= 2 && args[0] == "--dir" {
+			dir, args = args[1], args[2:]
+		}
+		if len(args) == 0 {
+			return errors.New(usage)
+		}
+		return Migrate(dir, args, out)
+	}
+	return errors.New(usage)
+}
+
+// parseFlags parses fs over args, allowing one positional name before or after the flags.
+func parseFlags(fs *flag.FlagSet, args []string) (string, error) {
 	fs.SetOutput(io.Discard)
+	name := ""
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		name, args = args[0], args[1:]
+	}
+	if err := fs.Parse(args); err != nil {
+		return "", fmt.Errorf("%w\n%s", err, usage)
+	}
+	if name == "" {
+		name = fs.Arg(0)
+	}
+	return name, nil
+}
+
+func runNew(args []string, in io.Reader, out io.Writer) error {
+	fs := flag.NewFlagSet("new", flag.ContinueOnError)
 	var o Options
 	fs.StringVar(&o.Module, "module", "", "go module path (default: name)")
 	fs.StringVar(&o.Arch, "arch", "layered", "architecture")
@@ -104,16 +102,11 @@ func Run(args []string, in io.Reader, out io.Writer) error {
 	fs.StringVar(&o.DB, "db", "", "database layer (e.g. pgx)")
 	extras := fs.String("extras", "", "comma-separated extras (ci,docker,otel)")
 	fs.StringVar(&o.Dir, "dir", ".", "parent directory")
-	rest := args[1:]
-	if len(rest) > 0 && !strings.HasPrefix(rest[0], "-") { // name may precede flags
-		o.Name, rest = rest[0], rest[1:]
+	name, err := parseFlags(fs, args)
+	if err != nil {
+		return err
 	}
-	if err := fs.Parse(rest); err != nil {
-		return fmt.Errorf("%w\n%s", err, usage)
-	}
-	if o.Name == "" {
-		o.Name = fs.Arg(0)
-	}
+	o.Name = name
 	if *extras != "" {
 		o.Extras = strings.Split(*extras, ",")
 	}
@@ -134,6 +127,104 @@ func Run(args []string, in io.Reader, out io.Writer) error {
 		return err
 	}
 	fmt.Fprintf(out, "created %s (%s, %s)\n  cd %s && go run ./cmd/server\n", o.Name, o.Arch, o.Router, o.Name)
+	return nil
+}
+
+func runAdd(args []string, out io.Writer) error {
+	if len(args) < 2 {
+		return errors.New(usage)
+	}
+	fs := flag.NewFlagSet("add", flag.ContinueOnError)
+	dir := fs.String("dir", ".", "project directory")
+	mod := fs.String("module", "", "target module (add service, modular only)")
+	name, err := parseFlags(fs, args[1:])
+	if err != nil {
+		return err
+	}
+	var files []string
+	switch args[0] {
+	case "feature":
+		err = AddFeature(*dir, name)
+	case "module":
+		err = AddModule(*dir, name)
+	case "handler":
+		files, err = AddHandler(*dir, name)
+	case "service":
+		files, err = AddService(*dir, name, *mod)
+	case "migration":
+		var f string
+		if f, err = AddMigration(*dir, name, time.Now()); err == nil {
+			files = []string{f}
+		}
+	default:
+		return errors.New(usage)
+	}
+	if err != nil {
+		return err
+	}
+	if len(files) == 0 {
+		fmt.Fprintf(out, "added %s %s: wire it up in cmd/server/main.go and internal/handler\n", args[0], name)
+		return nil
+	}
+	for _, f := range files {
+		fmt.Fprintln(out, "created", f)
+	}
+	return nil
+}
+
+func runUpdate(args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("update", flag.ContinueOnError)
+	dir := fs.String("dir", ".", "project directory")
+	dry := fs.Bool("dry-run", false, "report without writing")
+	if _, err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	report, err := Update(*dir, *dry)
+	if err != nil {
+		return err
+	}
+	for _, l := range report {
+		fmt.Fprintln(out, l)
+	}
+	if len(report) == 0 {
+		fmt.Fprintln(out, "already up to date")
+	}
+	return nil
+}
+
+func runCheck(args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("check", flag.ContinueOnError)
+	dir := fs.String("dir", ".", "project directory")
+	if _, err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	bad, err := check.Run(*dir)
+	if err != nil {
+		return err
+	}
+	for _, v := range bad {
+		fmt.Fprintln(out, v)
+	}
+	if len(bad) > 0 {
+		return fmt.Errorf("%d architecture violation(s)", len(bad))
+	}
+	fmt.Fprintln(out, "ok: no architecture violations")
+	return nil
+}
+
+func runDoctor(args []string, out io.Writer) error {
+	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	dir := fs.String("dir", ".", "project directory")
+	if _, err := parseFlags(fs, args); err != nil {
+		return err
+	}
+	lines, failed := Doctor(*dir)
+	for _, l := range lines {
+		fmt.Fprintln(out, l)
+	}
+	if failed {
+		return errors.New("doctor found problems")
+	}
 	return nil
 }
 
