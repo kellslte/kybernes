@@ -77,6 +77,9 @@ func TestDatabaseLayers(t *testing.T) {
 			if bad, err := check.Run(p); err != nil || len(bad) > 0 {
 				t.Errorf("check: %v %v", bad, err)
 			}
+			if lines, failed := Doctor(p); failed {
+				t.Errorf("doctor:\n%s", strings.Join(lines, "\n"))
+			}
 			if !hasMigrations(db.Name()) {
 				if _, err := AddMigration(p, "x", time.Now()); err == nil || !strings.Contains(err.Error(), "no SQL migrations") {
 					t.Errorf("add migration should be refused for %s, got %v", db.Name(), err)
