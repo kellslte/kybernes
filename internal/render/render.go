@@ -11,14 +11,14 @@ import (
 	"text/template"
 )
 
-// Apply renders src into dst and returns the files written (slash paths relative to dst). "__mod__" in a path is replaced by data["Mod"].
+// Apply renders src into dst and returns the files written (slash paths relative to dst). "__mod__" and "__pkg__" in a path are replaced by data["Mod"] and data["Pkg"].
 func Apply(dst string, src fs.FS, data map[string]string) ([]string, error) {
 	var written []string
 	err := fs.WalkDir(src, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		out := filepath.Join(dst, filepath.FromSlash(strings.ReplaceAll(p, "__mod__", data["Mod"])))
+		out := filepath.Join(dst, filepath.FromSlash(strings.NewReplacer("__mod__", data["Mod"], "__pkg__", data["Pkg"]).Replace(p)))
 		if d.IsDir() {
 			return os.MkdirAll(out, 0o755)
 		}

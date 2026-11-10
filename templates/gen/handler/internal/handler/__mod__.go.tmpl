@@ -1,0 +1,14 @@
+package handler
+
+import (
+	"fmt"
+	"net/http"
+)
+
+type {{.Title}}Handler struct{}
+
+func New{{.Title}}Handler() *{{.Title}}Handler { return &{{.Title}}Handler{} }
+
+func (h *{{.Title}}Handler) Get(w http.ResponseWriter, _ *http.Request) {
+	fmt.Fprintln(w, "{{.Mod}}")
+}

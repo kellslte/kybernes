@@ -1,0 +1,10 @@
+package service
+
+import "context"
+
+type {{.Title}}Service struct{}
+
+func New{{.Title}}Service() *{{.Title}}Service { return &{{.Title}}Service{} }
+
+// Do is a placeholder use case.
+func (s *{{.Title}}Service) Do(ctx context.Context) error { return nil }
